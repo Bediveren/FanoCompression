@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29609.76
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FanoCompression", "Fano\FanoCompression.csproj", "{77781DFC-DA39-4788-A77A-B1D8E7D4D3DF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LZ77", "LZ77\LZ77.csproj", "{03DB86CA-75CA-419A-A74C-9EAD21FF04FD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{77781DFC-DA39-4788-A77A-B1D8E7D4D3DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{77781DFC-DA39-4788-A77A-B1D8E7D4D3DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{77781DFC-DA39-4788-A77A-B1D8E7D4D3DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{77781DFC-DA39-4788-A77A-B1D8E7D4D3DF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{03DB86CA-75CA-419A-A74C-9EAD21FF04FD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{03DB86CA-75CA-419A-A74C-9EAD21FF04FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{03DB86CA-75CA-419A-A74C-9EAD21FF04FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{03DB86CA-75CA-419A-A74C-9EAD21FF04FD}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A1D15651-5A6A-4937-AC37-33078CFE16B4}
+	EndGlobalSection
+EndGlobal
