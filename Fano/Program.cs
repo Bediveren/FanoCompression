@@ -1,12 +1,33 @@
 ﻿using System;
+using System.Collections;
+using System.Globalization;
+using System.Text;
 
 namespace FanoCompression
 {
     class Program
     {
+
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            int wordLength = 8;
+            WordReader.LoadFile("../../../sample.txt", 64, wordLength);
+            BitArray word;
+            int line = 0;
+            string example = "aaa\r\naaa\r\naaa\r\nbbb\r\nbbb";
+            while(true)
+            {
+                line++;
+                if ((word = WordReader.NextWord()) == null) break;
+                Console.Write(line + ": ");
+                for (int i = 0; i < wordLength; i++)
+                {
+                    Console.Write(word[^(i+1)] ? 1 : 0);
+                }
+
+                var a = Encoding.UTF8.GetBytes((example[line - 1]).ToString());
+                Console.WriteLine(": " + (byte)a[0]);
+            }
         }
     }
 }
