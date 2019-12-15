@@ -22,15 +22,20 @@ namespace FanoCompression
             _buffer = new BitArray(File.ReadAllBytes(filePath));
         }
 
-        public static BitArray NextWord()
+        public static BitArrayExtended NextWord()
         {
             if (_buffer.Length >= _bitsRead + _wordLength)
             {
                 var word = _buffer.GetWord(_bitsRead, _wordLength);
                 _bitsRead += _wordLength;
-                return word;
+                return new BitArrayExtended(word);
             }
             else return null; //TO-DO add missing bits, return null only if end reached fully
+        }
+
+        public static void ResetHandle()
+        {
+            _bitsRead = 0;
         }
 
         static BitArray GetWord(this BitArray source, int offset, int length)
