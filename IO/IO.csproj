@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
@@ -6,9 +6,5 @@
     <ApplicationIcon />
     <StartupObject />
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Nito.Collections.Deque" Version="1.0.4" />
-  </ItemGroup>
 
 </Project>
