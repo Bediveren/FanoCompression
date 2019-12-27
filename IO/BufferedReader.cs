@@ -28,10 +28,10 @@ namespace IO
 
         private async Task<BitArray> ReadBitArray(int length)
         {
-            if (mBuffer == null)
+            if (mBuffer == null)// || mBuffer.Count == mBufferOffset && mStreamEmpty)
                 return null;
 
-            if(length > mBufferLength)
+            if(length > mBufferLength * 8)
                 throw new ArgumentOutOfRangeException();
 
             var ba = new BitArray(length);
@@ -63,6 +63,9 @@ namespace IO
                 mBuffer = null;
             }
 
+            if (copied == 0)
+                return null;
+
             // all options exhausted, fill the remaining part with 0s.
             while (copied < length)
             {
@@ -74,6 +77,23 @@ namespace IO
         }
 
         private readonly byte[] mSingleByteBuffer = new byte[1];
+
+        private byte[] mTempBuffer;
+        private byte[] mTempBuffer2;
+        private int mRead;
+
+        public async Task<byte?> ReadByteNative()
+        {
+            if (mTempBuffer2 == null || mRead == mTempBuffer2.Length)
+            {
+                if (mStreamEmpty)
+                    return null;
+                await GetNextBuffer();
+                mRead = 0;
+            }
+
+            return mTempBuffer2?[mRead++];
+        }
 
         public async Task<byte?> ReadByte()
         {
@@ -121,6 +141,9 @@ namespace IO
         {
             await mReadSemaphore.WaitAsync();
             mBuffer = mBackupBuffer;
+            mBackupBuffer = null;
+            mTempBuffer2 = mTempBuffer;
+            mTempBuffer = null;
             mBufferOffset = 0;
             mReadSemaphore.Release();
             
@@ -135,6 +158,7 @@ namespace IO
             {
                 byte[] tempBuffer = new byte[mBufferLength];
                 int bytesRead = await mInputStream.ReadAsync(tempBuffer);
+                mTempBuffer = bytesRead == 0 ? null : tempBuffer.Take(bytesRead).ToArray();
                 mBackupBuffer = bytesRead == 0 ? null : new BitArray(tempBuffer.Take(bytesRead).ToArray());
                 if (bytesRead != mBufferLength)
                     mStreamEmpty = true;
