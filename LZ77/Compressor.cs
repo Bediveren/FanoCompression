@@ -7,12 +7,14 @@ using Nito.Collections;
 
 namespace LZ77
 {
+    public delegate Task WriteDelegate(long data, int length);
+
     public class Compressor
     {
         public int WordsWritten { get; private set; } = 0;
 
         private Func<Task<byte?>> mNextWord;
-        private Action<BitArray> mWrite;
+        private WriteDelegate mWrite;
         private LinkedList<byte> mPresent;
         private LinkedList<byte> mHistory;
         private uint mMaxHistory;
@@ -54,7 +56,7 @@ namespace LZ77
             return bits;
         }
 
-        public static async Task<Compressor> Create(Func<Task<byte?>> nextWordFunc, Action<BitArray> write,
+        public static async Task<Compressor> Create(Func<Task<byte?>> nextWordFunc, WriteDelegate write,
             uint historySize,
             uint presentSize)
         {
@@ -85,17 +87,14 @@ namespace LZ77
         {
             byte historyLengthInBits = (byte) (Log2_WiegleyJ(mMaxHistory - 1) + 1);
             byte presentLengthInBits = (byte) (Log2_WiegleyJ((uint) mPresent.Count) + 1);
+            Console.WriteLine($"History length in bits: {historyLengthInBits}; present length in bits: {presentLengthInBits}");
             int typeThreshold = (1 + historyLengthInBits + presentLengthInBits) / (1 + 8);
             // write file size, most significant part first
-            mWrite(new BitArray(new[]
-            {
-                (int) (size >> 32), // most significant digit (32bit)
-                (int) (size & 0xffffffff) // least significant digit (32bit)
-            }));
+            await mWrite(unchecked((long)size), 64);
             // write history size (in bytes)
-            mWrite(new BitArray(new[] { unchecked((int) mMaxHistory) }));
+            await mWrite(mMaxHistory, 32);
             // write present size (in bits)
-            mWrite(new BitArray(new[] { presentLengthInBits }));
+            await mWrite(presentLengthInBits, 8);
 
             byte? nextWord;
             while (mPresent.Count > 0)
@@ -135,10 +134,10 @@ namespace LZ77
                 if (bestLength <= typeThreshold)
                 {
                     // couldn't find matching word
-                    mWrite(new BitArray(new[] { true }));
+                    await mWrite(1, 1);
                     byte word = mPresent.First.Value;
                     mPresent.RemoveFirst();
-                    mWrite(new BitArray(new[] { word }));
+                    await mWrite(word, 8);
                     mHistory.AddLast(word);
 
                     WordsWritten++;
@@ -149,11 +148,9 @@ namespace LZ77
                 else
                 {
                     // found a matching word
-                    mWrite(new BitArray(new[] { false }));
-                    var position = new BitArray(new[] { bestPosition }) { Length = historyLengthInBits };
-                    mWrite(position);
-                    var length = new BitArray(new[] { bestLength }) { Length = presentLengthInBits };
-                    mWrite(length);
+                    await mWrite(0, 1);
+                    await mWrite(bestPosition, historyLengthInBits);
+                    await mWrite(bestLength, presentLengthInBits);
 
                     WordsWritten += bestLength;
                     for (int i = 0; i < bestLength; i++)
