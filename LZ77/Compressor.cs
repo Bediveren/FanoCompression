@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Nito.Collections;
@@ -12,8 +13,8 @@ namespace LZ77
 
         private Func<Task<byte?>> mNextWord;
         private Action<BitArray> mWrite;
-        private Deque<byte> mPresent;
-        private Deque<byte> mHistory;
+        private LinkedList<byte> mPresent;
+        private LinkedList<byte> mHistory;
         private uint mMaxHistory;
 
         // Source: https://stackoverflow.com/a/20342282/2352507 WiegleyJ 12/3/2013
@@ -61,21 +62,20 @@ namespace LZ77
             result.mNextWord = nextWordFunc;
             result.mWrite = write;
             result.mMaxHistory = historySize;
-            result.mPresent = new Deque<byte>((int) presentSize);
+            result.mPresent = new LinkedList<byte>();
             for (int i = 0; i < presentSize; i++)
             {
                 byte? nextWord = await nextWordFunc();
                 if (nextWord == null)
                 {
-                    result.mPresent.Capacity = i;
                     Console.WriteLine($"truncating present size to {i}");
                     break;
                 }
 
-                result.mPresent.AddToBack(nextWord.Value);
+                result.mPresent.AddLast(nextWord.Value);
             }
 
-            result.mHistory = new Deque<byte>((int) historySize);
+            result.mHistory = new LinkedList<byte>();
             return result;
         }
 
@@ -83,8 +83,9 @@ namespace LZ77
 
         public async Task Compress(ulong size)
         {
-            byte historyLengthInBits = (byte) (Log2_WiegleyJ(mMaxHistory) + 1);
+            byte historyLengthInBits = (byte) (Log2_WiegleyJ(mMaxHistory - 1) + 1);
             byte presentLengthInBits = (byte) (Log2_WiegleyJ((uint) mPresent.Count) + 1);
+            int typeThreshold = (1 + historyLengthInBits + presentLengthInBits) / (1 + 8);
             // write file size, most significant part first
             mWrite(new BitArray(new[]
             {
@@ -101,36 +102,49 @@ namespace LZ77
             {
                 int bestPosition = 0;
                 int bestLength = 0;
-                for (int i = 0; i < mHistory.Count; i++)
+                var historyStart = mHistory.Last;
+                int currentPosition = 0;
+                while (historyStart != null)
                 {
-                    if (mHistory[i] == mPresent[0])
+                    var present = mPresent.First;
+                    var history = historyStart;
+                    if (history.Value == present.Value)
                     {
-                        int maxPossibleLength = Math.Min(mPresent.Count, mHistory.Count - i);
+                        int maxPossibleLength = Math.Min(mPresent.Count, currentPosition + 1);
                         int currentLength = 1;
-                        while (currentLength < maxPossibleLength &&
-                               mHistory[i + currentLength] == mPresent[currentLength])
+                        history = history.Next;
+                        present = present.Next;
+                        while (currentLength < maxPossibleLength && history.Value == present.Value)
+                        {
                             currentLength++;
+                            history = history.Next;
+                            present = present.Next;
+                        }
 
                         if (currentLength > bestLength)
                         {
                             bestLength = currentLength;
-                            bestPosition = i;
+                            bestPosition = currentPosition;
                         }
                     }
+
+                    currentPosition++;
+                    historyStart = historyStart.Previous;
                 }
 
-                if (bestLength < 2)
+                if (bestLength <= typeThreshold)
                 {
                     // couldn't find matching word
                     mWrite(new BitArray(new[] { true }));
-                    byte word = mPresent.RemoveFromFront();
+                    byte word = mPresent.First.Value;
+                    mPresent.RemoveFirst();
                     mWrite(new BitArray(new[] { word }));
-                    mHistory.AddToBack(word);
+                    mHistory.AddLast(word);
 
                     WordsWritten++;
                     nextWord = await mNextWord();
                     if (nextWord != null)
-                        mPresent.AddToBack(nextWord.Value);
+                        mPresent.AddLast(nextWord.Value);
                 }
                 else
                 {
@@ -144,16 +158,17 @@ namespace LZ77
                     WordsWritten += bestLength;
                     for (int i = 0; i < bestLength; i++)
                     {
-                        byte word = mPresent.RemoveFromFront();
-                        mHistory.AddToBack(word);
+                        byte word = mPresent.First.Value;
+                        mPresent.RemoveFirst();
+                        mHistory.AddLast(word);
                         nextWord = await mNextWord();
                         if (nextWord != null)
-                            mPresent.AddToBack(nextWord.Value);
+                            mPresent.AddLast(nextWord.Value);
                     }
                 }
 
                 while (mHistory.Count > mMaxHistory)
-                    mHistory.RemoveFromFront();
+                    mHistory.RemoveFirst();
             }
         }
     }
