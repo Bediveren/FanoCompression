@@ -1,21 +1,22 @@
 ﻿using System;
 using System.Collections;
+using System.Threading.Tasks;
 using Nito.Collections;
 
 namespace LZ77
 {
     public class Compressor
     {
-        private Func<byte?> mNextWord;
+        private Func<Task<byte?>> mNextWord;
         private Action<BitArray> mWrite;
         private Deque<byte> mPresent;
         private Deque<byte> mHistory;
         private uint mMaxHistory;
 
         // Source: https://stackoverflow.com/a/20342282/2352507 WiegleyJ 12/3/2013
-        private int Log2_WiegleyJ(uint n)
+        private byte Log2_WiegleyJ(uint n)
         {
-            int bits = 0;
+            byte bits = 0;
 
             if (n > 0xffff)
             {
@@ -48,24 +49,29 @@ namespace LZ77
             return bits;
         }
 
-        public Compressor(Func<byte?> nextWordFunc, Action<BitArray> write, uint historySize, uint presentSize)
+        public static async Task<Compressor> Create(Func<Task<byte?>> nextWordFunc, Action<BitArray> write, uint historySize,
+            uint presentSize)
         {
-            mNextWord = nextWordFunc;
-            mWrite = write;
-            mMaxHistory = historySize;
-            mPresent = new Deque<byte>((int) presentSize);
+            Compressor result = new Compressor();
+            result.mNextWord = nextWordFunc;
+            result.mWrite = write;
+            result.mMaxHistory = historySize;
+            result.mPresent = new Deque<byte>((int)presentSize);
             for (int i = 0; i < presentSize; i++)
             {
-                byte? nextWord = nextWordFunc();
+                byte? nextWord = await nextWordFunc();
                 if (nextWord == null)
                 {
-                    mPresent.Capacity = i;
+                    result.mPresent.Capacity = i;
                     Console.WriteLine($"truncating present size to {i}");
                     break;
                 }
-                mPresent.AddToBack(nextWord.Value);
+                result.mPresent.AddToBack(nextWord.Value);
             }
-            mHistory = new Deque<byte>((int) historySize);
+            result.mHistory = new Deque<byte>((int)historySize);
+            return result;
         }
+
+        private Compressor() { }
     }
 }

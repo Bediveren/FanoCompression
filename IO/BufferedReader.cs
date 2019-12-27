@@ -23,10 +23,10 @@ namespace IO
             mInputStream = input;
             mBufferLength = bufferLength;
             ReadBackup();
-            GetNextBuffer();
+            GetNextBuffer().Wait();
         }
 
-        public BitArray ReadBitArray(int length)
+        private async Task<BitArray> ReadBitArray(int length)
         {
             if (mBuffer == null)
                 return null;
@@ -46,7 +46,7 @@ namespace IO
             if (copied == length)
                 return ba;
 
-            GetNextBuffer();
+            await GetNextBuffer();
             if (mBuffer != null)
             {
                 while (copied < length && mBufferOffset < mBuffer.Count)
@@ -75,9 +75,9 @@ namespace IO
 
         private readonly byte[] mSingleByteBuffer = new byte[1];
 
-        public byte? ReadByte()
+        public async Task<byte?> ReadByte()
         {
-            var ba = ReadBitArray(8);
+            var ba = await ReadBitArray(8);
             if (ba == null)
                 return null;
             ba.CopyTo(mSingleByteBuffer, 0);
@@ -86,9 +86,9 @@ namespace IO
 
         private readonly short[] mSingleShortBuffer = new short[1];
 
-        public short? ReadShort()
+        public async Task<short?> ReadShort()
         {
-            var ba = ReadBitArray(16);
+            var ba = await ReadBitArray(16);
             if (ba == null)
                 return null;
             ba.CopyTo(mSingleShortBuffer, 0);
@@ -97,9 +97,9 @@ namespace IO
 
         private readonly int[] mSingleIntBuffer = new int[1];
 
-        public int? ReadInt()
+        public async Task<int?> ReadInt()
         {
-            var ba = ReadBitArray(32);
+            var ba = await ReadBitArray(32);
             if (ba == null)
                 return null;
             ba.CopyTo(mSingleIntBuffer, 0);
@@ -108,18 +108,18 @@ namespace IO
 
         private readonly long[] mSingleLongBuffer = new long[1];
 
-        public long? ReadLong()
+        public async Task<long?> ReadLong()
         {
-            var ba = ReadBitArray(64);
+            var ba = await ReadBitArray(64);
             if (ba == null)
                 return null;
             ba.CopyTo(mSingleLongBuffer, 0);
             return mSingleLongBuffer[0];
         }
 
-        private void GetNextBuffer()
+        private async Task GetNextBuffer()
         {
-            mReadSemaphore.Wait();
+            await mReadSemaphore.WaitAsync();
             mBuffer = mBackupBuffer;
             mBufferOffset = 0;
             mReadSemaphore.Release();
