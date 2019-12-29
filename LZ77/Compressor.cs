@@ -3,12 +3,11 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using IO;
 using Nito.Collections;
 
 namespace LZ77
 {
-    public delegate Task WriteDelegate(long data, int length);
-
     public class Compressor
     {
         public int WordsWritten { get; private set; } = 0;

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace IO
 {
+    public delegate Task WriteDelegate(long data, int length);
     public class BufferedWriter
     {
         private long[] mBuffer;
