@@ -11,6 +11,8 @@ namespace FanoCompression
         static void Main(string[] args)
         {
             int wordLength = 8;
+
+            /*
             WordReader.LoadFile("../../../sample.txt", 64, wordLength);
             BitArrayExtended word;
             int line = 0;
@@ -36,7 +38,11 @@ namespace FanoCompression
             var ax = new BitArrayExtended(sevenItems2);
 
             Console.WriteLine(e.Equals(ax));
-            var fano = new FanoEncoder("../../../sample.txt", wordLength);
+            */
+            //var fano = new FanoEncoder("../../../sample.txt", wordLength);
+            var fano = new FanoEncoder();
+            fano.Encode("../../../sample.txt", 8, "./");
+            //fano.decode("file.ex", "locationtosave";
 
         }
     }
