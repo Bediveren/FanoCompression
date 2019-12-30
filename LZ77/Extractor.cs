@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using IO;
 
 namespace LZ77
 {
-    public delegate Task<long?> ReadDelegate(int length);
     public class Extractor
     {
 

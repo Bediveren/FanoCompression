@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace IO
 {
+    public delegate Task<long?> ReadDelegate(int length);
     public class BufferedReader
     {
         private BitArray mBuffer;

@@ -11,4 +11,8 @@
     <PackageReference Include="Nito.Collections.Deque" Version="1.0.4" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\IO\IO.csproj" />
+  </ItemGroup>
+
 </Project>
