@@ -23,7 +23,7 @@ namespace FanoCompression
             this.wordLength = worldLength;
         }
 
-        public async void Encode()
+        public async Task Encode()
         {
 
             //Calculate word frequencies

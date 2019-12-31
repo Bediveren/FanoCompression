@@ -4,13 +4,14 @@ using System.Collections;
 using System.Globalization;
 using System.IO;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace FanoCompression
 {
     class Program
     {
 
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             int wordLength = 8;
                 
@@ -21,7 +22,7 @@ namespace FanoCompression
             BufferedWriter writer = new BufferedWriter(8000, writeFileStream);
 
             var fano = new FanoEncoder(reader , writer, wordLength);
-            fano.Encode();
+            await fano.Encode();
 
             readFileStream.Close();
             writeFileStream.Close();
