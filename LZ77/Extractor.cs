@@ -106,10 +106,10 @@ namespace LZ77
                     for (int i = 0; i < length.Value; i++)
                     {
                         mHistory.AddLast(pointer.Value);
-                        if (mHistory.Count > mMaxHistory)
-                            mHistory.RemoveFirst();
                         await mWrite(pointer.Value, 8);
                         pointer = pointer.Next;
+                        if (mHistory.Count > mMaxHistory)
+                            mHistory.RemoveFirst();
                     }
 
                     WordsWritten += length.Value;

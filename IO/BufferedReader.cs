@@ -2,6 +2,7 @@
 using System.Collections;
 using System.IO;
 using System.Linq;
+using System.Runtime.Intrinsics.X86;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,12 +11,15 @@ namespace IO
     public delegate Task<long?> ReadDelegate(int length);
     public class BufferedReader
     {
-        private BitArray mBuffer;
-        private BitArray mBackupBuffer;
+        private long[] mBuffer;
+        private long[] mBackupBuffer;
         private int mBufferOffset;
+        private int mBitOffset;
         private Stream mInputStream;
-        private int mBufferLength;
+        private int mBufferLength; // in BYTES!
+        private int mBackupBufferLength;
         private bool mStreamEmpty; // false by default
+
         private readonly SemaphoreSlim mReadSemaphore = new SemaphoreSlim(1);
 
         public BufferedReader(int bufferLength, Stream input)
@@ -23,128 +27,76 @@ namespace IO
             mBufferOffset = 0;
             mInputStream = input;
             mBufferLength = bufferLength;
+            mBuffer = new long[(mBufferLength - 1) / 8 + 1];
             ReadBackup();
             GetNextBuffer().Wait();
         }
 
-        private async Task<BitArray> ReadBitArray(int length)
+        public async Task<long?> ReadCustomLength(int length)
         {
-            if (mBuffer == null)// || mBuffer.Count == mBufferOffset && mStreamEmpty)
+            var bufferWordLength = GetBufferWordLength();
+
+            if (mBitOffset == bufferWordLength)
+            {
+                mBitOffset = 0;
+                mBufferOffset++;
+                bufferWordLength = GetBufferWordLength();
+            }
+
+            if (mBufferOffset == (mBufferLength - 1) / 8 + 1)
+            {
+                await GetNextBuffer();
+            }
+
+            if (mBuffer == null)
                 return null;
 
-            if(length > mBufferLength * 8)
+            if (length > mBufferLength * 8)
                 throw new ArgumentOutOfRangeException();
 
-            var ba = new BitArray(length);
-            int copied = 0;
-            while (copied < length && mBufferOffset < mBuffer.Count)
+            int newBitOffset = mBitOffset + length;
+
+            if (newBitOffset <= bufferWordLength)
             {
-                ba.Set(copied, mBuffer.Get(mBufferOffset));
-                copied++;
-                mBufferOffset++;
+                // the entire requested word fits in current byte
+                mBitOffset = newBitOffset;
+                long bitMask = length == 64 ? -1L : ((1L << length) - 1);
+                return (mBuffer[mBufferOffset] >> (64 - mBitOffset)) & bitMask;
             }
-
-            if (copied == length)
-                return ba;
-
-            await GetNextBuffer();
-            if (mBuffer != null)
+            else
             {
-                while (copied < length && mBufferOffset < mBuffer.Count)
-                {
-                    ba.Set(copied, mBuffer.Get(mBufferOffset));
-                    copied++;
-                    mBufferOffset++;
-                }
-
-                if (copied == length)
-                    return ba;
-
-                // We've consumed the last bit, set buffer to null to avoid unnecessary computations next time someone attempts read.
-                mBuffer = null;
+                // first, store the part that fits in current byte
+                int fits = bufferWordLength - mBitOffset;
+                int notFits = length - fits;
+                long bitMask = fits == 64 ? -1L : ((1L << fits) - 1);
+                mBitOffset = 0;
+                var firstPart = (mBuffer[mBufferOffset++] & bitMask) << notFits;
+                var secondPart = await ReadCustomLength(notFits);
+                if (secondPart == null)
+                    return null;
+                return firstPart | secondPart;
             }
-
-            if (copied == 0)
-                return null;
-
-            // all options exhausted, fill the remaining part with 0s.
-            while (copied < length)
-            {
-                ba.Set(copied, false);
-                copied++;
-            }
-
-            return ba;
         }
 
-        private readonly byte[] mSingleByteBuffer = new byte[1];
-
-        private byte[] mTempBuffer;
-        private byte[] mTempBuffer2;
-        private int mRead;
-
-        public async Task<byte?> ReadByteNative()
+        private int GetBufferWordLength()
         {
-            if (mTempBuffer2 == null || mRead == mTempBuffer2.Length)
-            {
-                if (mStreamEmpty)
-                    return null;
-                await GetNextBuffer();
-                mRead = 0;
-            }
-
-            return mTempBuffer2?[mRead++];
+            var bufferWordLength = (mStreamEmpty && mBufferOffset == (mBufferLength - 1) / 8) ? (mBufferLength % 8) * 8 : 64;
+            if (bufferWordLength == 0)
+                bufferWordLength = 64;
+            return bufferWordLength;
         }
 
         public async Task<byte?> ReadByte()
         {
-            var ba = await ReadBitArray(8);
-            if (ba == null)
-                return null;
-            ba.CopyTo(mSingleByteBuffer, 0);
-            return mSingleByteBuffer[0];
-        }
-
-        private readonly short[] mSingleShortBuffer = new short[1];
-
-        public async Task<short?> ReadShort()
-        {
-            var ba = await ReadBitArray(16);
-            if (ba == null)
-                return null;
-            ba.CopyTo(mSingleShortBuffer, 0);
-            return mSingleShortBuffer[0];
-        }
-
-        private readonly int[] mSingleIntBuffer = new int[1];
-
-        public async Task<int?> ReadInt()
-        {
-            var ba = await ReadBitArray(32);
-            if (ba == null)
-                return null;
-            ba.CopyTo(mSingleIntBuffer, 0);
-            return mSingleIntBuffer[0];
-        }
-
-        private readonly long[] mSingleLongBuffer = new long[1];
-
-        public async Task<long?> ReadLong()
-        {
-            var ba = await ReadBitArray(64);
-            if (ba == null)
-                return null;
-            ba.CopyTo(mSingleLongBuffer, 0);
-            return mSingleLongBuffer[0];
+            return (byte?)(await ReadCustomLength(8));
         }
 
         private async Task GetNextBuffer()
         {
             await mReadSemaphore.WaitAsync();
             mBuffer = mBackupBuffer;
+            mBufferLength = mBackupBufferLength;
             mBackupBuffer = null;
-            mTempBuffer2 = mTempBuffer;
-            mTempBuffer = null;
             mBufferOffset = 0;
             mReadSemaphore.Release();
             
@@ -158,11 +110,16 @@ namespace IO
             try
             {
                 byte[] tempBuffer = new byte[mBufferLength];
-                int bytesRead = await mInputStream.ReadAsync(tempBuffer);
-                mTempBuffer = bytesRead == 0 ? null : tempBuffer.Take(bytesRead).ToArray();
-                mBackupBuffer = bytesRead == 0 ? null : new BitArray(tempBuffer.Take(bytesRead).ToArray());
+                int bytesRead = await mInputStream.ReadAsync(tempBuffer, 0, mBufferLength);
+                mBackupBuffer = bytesRead == 0
+                    ? null
+                    : Enumerable.Range(0, (mBufferLength - 1) / 8 + 1).Select(x =>
+                        BitConverter.IsLittleEndian
+                            ? BitConverter.ToInt64(tempBuffer.Skip(x * 8).Take(8).Reverse().ToArray(), 0)
+                            : BitConverter.ToInt64(tempBuffer, x * 8)).ToArray();
                 if (bytesRead != mBufferLength)
                     mStreamEmpty = true;
+                mBackupBufferLength = bytesRead;
             }
             finally
             {
