@@ -1,6 +1,8 @@
-﻿using System;
+﻿using IO;
+using System;
 using System.Collections;
 using System.Globalization;
+using System.IO;
 using System.Text;
 
 namespace FanoCompression
@@ -10,38 +12,34 @@ namespace FanoCompression
 
         static void Main(string[] args)
         {
-            int wordLength = 8;
 
             /*
-            WordReader.LoadFile("../../../sample.txt", 64, wordLength);
-            BitArrayExtended word;
-            int line = 0;
-            string example = "aaa\r\naaa\r\naaa\r\nbbb\r\nbbb";
-            while(true)
-            {
-                line++;
-                if ((word = WordReader.NextWord()) == null) break;
-                Console.Write(line + ": ");
-                for (int i = 0; i < wordLength; i++)
-                {
-                    Console.Write(word[^(i+1)] ? 1 : 0);
-                }
-
-                var a = Encoding.UTF8.GetBytes((example[line - 1]).ToString());
-                Console.WriteLine(": " + (byte)a[0]);
-            }
-            WordReader.ResetHandle();
-
-            var sevenItems = new byte[] { 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 };
-            var sevenItems2 = new byte[] { 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 };
-            var e = new BitArrayExtended(sevenItems);
-            var ax = new BitArrayExtended(sevenItems2);
-
-            Console.WriteLine(e.Equals(ax));
+            ifStream = new FileStream("output.lz77", FileMode.Open, FileAccess.Read);
+            reader = new BufferedReader(60000, ifStream);
+            ofStream = new FileStream("output.zip", FileMode.Create, FileAccess.Write);
+            writer = new BufferedWriter(60000, ofStream);
+            var extr = new Extractor(reader.ReadCustomLength, writer.WriteCustomLength);
+            await extr.Extract();
+            await writer.FlushBuffer();
+            ifStream.Close();
+            ofStream.Close();
             */
-            //var fano = new FanoEncoder("../../../sample.txt", wordLength);
-            var fano = new FanoEncoder();
-            fano.Encode("../../../sample.txt", 8, "./");
+
+
+            int wordLength = 8;
+                
+            FileStream readFileStream = new FileStream("../../../sample.txt", FileMode.Open, FileAccess.Read);
+            BufferedReader reader = new BufferedReader(8000, readFileStream);
+
+            FileStream writeFileStream = new FileStream("../../../sample.fano", FileMode.Create, FileAccess.Write);
+            BufferedWriter writer = new BufferedWriter(8000, writeFileStream);
+
+            var fano = new FanoEncoder(reader , writer, wordLength);
+            // fano.Encode("../../../sample.txt", 8, "./");
+            fano.Encode();
+            var a = (10, 10);
+            readFileStream.Close();
+            writeFileStream.Close();
             //fano.decode("file.ex", "locationtosave";
 
         }

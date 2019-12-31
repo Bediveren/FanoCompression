@@ -78,6 +78,17 @@ namespace IO
             }
         }
 
+        public async Task ResetBufferedReader()
+        {
+            //TODO, this resets but perhaps not everything is needed to be called.
+            //TODO, this is working synchronously
+            this.mInputStream.Seek(0, SeekOrigin.Begin);
+            mBuffer = new long[(mBufferLength - 1) / 8 + 1];
+            mBufferOffset = 0;
+            ReadBackup();
+            GetNextBuffer().Wait();
+        }
+
         private int GetBufferWordLength()
         {
             var bufferWordLength = (mStreamEmpty && mBufferOffset == (mBufferLength - 1) / 8) ? (mBufferLength % 8) * 8 : 64;

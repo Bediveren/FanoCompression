@@ -1,5 +1,2 @@
-aaaaaaaaaa
-bbbbbb
-ccc
-dd
-g
+aaaaa
+bbbbAAA
