@@ -11,13 +11,7 @@ namespace FanoCompression.FanoTree
 
         public long? leaf;
 
-        public Word? value;
-
         public TreeNode(){}
-        public TreeNode(Word? value)
-        {
-            this.value = value;
-        }
         public TreeNode(long? leaf)
         {
             this.leaf = leaf;
