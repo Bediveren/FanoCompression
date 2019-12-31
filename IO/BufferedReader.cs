@@ -80,13 +80,11 @@ namespace IO
 
         public async Task ResetBufferedReader()
         {
-            //TODO, this resets but perhaps not everything is needed to be called.
-            //TODO, this is working synchronously
             this.mInputStream.Seek(0, SeekOrigin.Begin);
             mBuffer = new long[(mBufferLength - 1) / 8 + 1];
             mBufferOffset = 0;
             ReadBackup();
-            GetNextBuffer().Wait();
+            await GetNextBuffer();
         }
 
         private int GetBufferWordLength()
@@ -120,7 +118,7 @@ namespace IO
             await mReadSemaphore.WaitAsync();
             try
             {
-                byte[] tempBuffer = new byte[mBufferLength];
+                byte[] tempBuffer = new byte[mBufferLength + 8];
                 int bytesRead = await mInputStream.ReadAsync(tempBuffer, 0, mBufferLength);
                 mBackupBuffer = bytesRead == 0
                     ? null

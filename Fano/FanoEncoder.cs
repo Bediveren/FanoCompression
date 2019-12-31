@@ -29,8 +29,6 @@ namespace FanoCompression
             //Calculate word frequencies
             //-------------------------------------------------------------------------
             Dictionary<long?, int> frequencies = await CalculateFrequencyAsync();
-            frequencies = await CalculateFrequencyAsync();
-            frequencies = await CalculateFrequencyAsync();
 
             //Create encoding tree
             //-------------------------------------------------------------------------
@@ -64,9 +62,15 @@ namespace FanoCompression
             await this.writer.WriteCustomLength(codeLength, sizeof(long) * 8);
             await this.writer.WriteCustomLength((long)this.wordLength, sizeof(long) * 8);
 
+            //The root bit '0' is skipped
+            await WriteEncodingTreeAsync(root);
 
-            Console.WriteLine(encodingTable[97].code);
-            Console.Write("Hello!");
+            long? currentWord;
+            while ((currentWord = await this.reader.ReadCustomLength(this.wordLength)) != null)
+            {
+                await this.writer.WriteCustomLength((long)encodingTable[currentWord].code, encodingTable[currentWord].codeLength);
+            }
+            await this.writer.FlushBuffer();
         }
 
 
@@ -354,5 +358,23 @@ namespace FanoCompression
                 await FindEncodingsAsync(node.Right, encodings, code << 1 | 1, length + 1);
             }
         }
+
+        private async Task WriteEncodingTreeAsync(TreeNode node)
+        {
+            if (node.leaf != null)
+            {
+                Console.Write($"1|{(long)node.leaf }|");
+                await this.writer.WriteCustomLength(1, 1);
+                await this.writer.WriteCustomLength((long)node.leaf, this.wordLength);
+            }
+            else
+            {
+                Console.Write($"0");
+                await writer.WriteCustomLength(0, 1);
+                await WriteEncodingTreeAsync(node.Left);
+                await WriteEncodingTreeAsync(node.Right);
+            }
+        }
     }
+    
 }
