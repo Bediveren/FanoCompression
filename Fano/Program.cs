@@ -16,7 +16,7 @@ namespace FanoCompression
             
             
             // --Encoding --
-            byte wordLength = 63;  
+            byte wordLength = 32;  
             
             FileStream readFileStream = new FileStream("../../../sound.wav", FileMode.Open, FileAccess.Read);
             BufferedReader reader = new BufferedReader(80000000, readFileStream);

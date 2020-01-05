@@ -62,9 +62,11 @@ namespace FanoCompression
             //long codeLength = 0;
             //codeLength = frequencyList.Select(x => encodingTable[x.Key].codeLength * x.Value).Sum();
 
-            
+
             //Possible misscount?
-            long originalFileLength = frequencyList.Select(x => x.Value).Sum() * this.wordLength / 8;
+            // long originalFileLength = frequencyList.Select(x => x.Value).Sum() * this.wordLength / 8;
+            //Console.WriteLine($"Original file length: {originalFileLength}");
+            long originalFileLength = await reader.GetFileSizeAsync();
 
             //Writing
             await this.writer.WriteCustomLength((long)this.wordLength, sizeof(byte) * 8);
