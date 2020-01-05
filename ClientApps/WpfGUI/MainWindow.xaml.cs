@@ -169,7 +169,7 @@ namespace WpfGUI
                 progress += x;
                 //mLz77IWorker.ReportProgress(Convert.ToInt32(progress / (len / 100)));
             };// mLz77CompressProgress += x;
-            Timer t = new Timer(o => mLz77IWorker.ReportProgress(Convert.ToInt32(progress / (len / 100))), null, 0, 25);
+            Timer t = new Timer(o => mLz77IWorker.ReportProgress(Convert.ToInt32(progress * 100 / len )), null, 0, 25);
 
             await compressor.Compress((ulong)len);
             t.Dispose();
@@ -282,7 +282,8 @@ namespace WpfGUI
             {
                 progress += x;
             };
-            Timer t = new Timer(o => mLz77OWorker.ReportProgress(Convert.ToInt32(progress / (len / 100))), null, 0, 25);
+            Timer t = new Timer(o => mLz77OWorker.ReportProgress(Convert.ToInt32(progress * 100 / len)), null, 0,
+                25);
 
             await extractor.Extract();
             t.Dispose();
@@ -431,7 +432,7 @@ namespace WpfGUI
             {
                 progress += x;
             };
-            Timer t = new Timer(o => mFanoIWorker.ReportProgress(Convert.ToInt32(progress / (len / 100))), null, 0, 25);
+            Timer t = new Timer(o => mFanoIWorker.ReportProgress(Convert.ToInt32(progress * 100 / len)), null, 0, 25);
 
             await compressor.Encode(mWordLength);
             t.Dispose();
@@ -547,7 +548,7 @@ namespace WpfGUI
             {
                 progress += x;
             };
-            Timer t = new Timer(o => mFanoOWorker.ReportProgress(Convert.ToInt32(progress / (len / 100))), null, 0, 25);
+            Timer t = new Timer(o => mFanoOWorker.ReportProgress(Convert.ToInt32(progress * 100 / len)), null, 0, 25);
 
             await extractor.Decode();
             t.Dispose();
