@@ -14,7 +14,7 @@ namespace FanoCompression
         public static int countForBits = 0;
     }
 
-    class FanoEncoder
+    public class FanoEncoder
     {
         private readonly BufferedReader reader;
         private readonly BufferedWriter writer;

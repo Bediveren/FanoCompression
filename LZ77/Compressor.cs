@@ -10,7 +10,7 @@ namespace LZ77
 {
     public class Compressor
     {
-        public int WordsWritten { get; private set; } = 0;
+        public event Action<long> WordsWritten;
 
         private Func<Task<byte?>> mNextWord;
         private WriteDelegate mWrite;
@@ -87,7 +87,7 @@ namespace LZ77
             byte historyLengthInBits = (byte) (Log2_WiegleyJ(mMaxHistory - 1) + 1);
             byte presentLengthInBits = (byte) (Log2_WiegleyJ((uint) mPresent.Count) + 1);
             Console.WriteLine($"History length in bits: {historyLengthInBits}; present length in bits: {presentLengthInBits}");
-            int typeThreshold = (1 + historyLengthInBits + presentLengthInBits) / (1 + 8);
+            int typeThreshold = (1 + historyLengthInBits + presentLengthInBits) / (1 + sizeof(byte));
             // write file size, most significant part first
             await mWrite(unchecked((long)size), 64);
             // write history size (in bytes)
@@ -139,7 +139,7 @@ namespace LZ77
                     await mWrite(word, 8);
                     mHistory.AddLast(word);
 
-                    WordsWritten++;
+                    WordsWritten?.Invoke(1);
                     nextWord = await mNextWord();
                     if (nextWord != null)
                         mPresent.AddLast(nextWord.Value);
@@ -151,7 +151,7 @@ namespace LZ77
                     await mWrite(bestPosition, historyLengthInBits);
                     await mWrite(bestLength, presentLengthInBits);
 
-                    WordsWritten += bestLength;
+                    WordsWritten?.Invoke(bestLength);
                     for (int i = 0; i < bestLength; i++)
                     {
                         byte word = mPresent.First.Value;

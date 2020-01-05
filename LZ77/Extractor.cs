@@ -46,14 +46,15 @@ namespace LZ77
             return bits;
         }
 
-        public long WordsWritten { get; private set; } = 0;
+        public event Action<long> WordsWritten;
         public long TotalWords { get; private set; } = 1;
 
-        private ReadDelegate mRead;
-        private WriteDelegate mWrite;
-        private LinkedList<byte> mHistory;
+        private readonly ReadDelegate mRead;
+        private readonly WriteDelegate mWrite;
+        private readonly LinkedList<byte> mHistory;
         private uint mMaxHistory;
         private int mPresentLength;
+        private long mWordsWritten;
 
         public Extractor(ReadDelegate read, WriteDelegate write)
         {
@@ -69,7 +70,7 @@ namespace LZ77
             mPresentLength = Convert.ToInt32((await mRead(8)).GetValueOrDefault());
             int historyLengthInBits = Log2_WiegleyJ(mMaxHistory - 1) + 1;
 
-            while (WordsWritten < TotalWords)
+            while (mWordsWritten < TotalWords)
             {
                 var type = await mRead(1);
                 if(type == null)
@@ -85,7 +86,8 @@ namespace LZ77
                     if (mHistory.Count > mMaxHistory)
                         mHistory.RemoveFirst();
 
-                    WordsWritten++;
+                    mWordsWritten++;
+                    WordsWritten?.Invoke(1);
                 }
                 else if (type.Value == 0)
                 {
@@ -112,7 +114,8 @@ namespace LZ77
                             mHistory.RemoveFirst();
                     }
 
-                    WordsWritten += length.Value;
+                    mWordsWritten += length.Value;
+                    WordsWritten?.Invoke(length.Value);
                 }
                 else
                 {
