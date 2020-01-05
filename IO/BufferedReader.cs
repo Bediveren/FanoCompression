@@ -17,6 +17,7 @@ namespace IO
         private int mBitOffset;
         private Stream mInputStream;
         private int mBufferLength; // in BYTES!
+        private int mMaxBufferLength;
         private int mBackupBufferLength;
         private bool mStreamEmpty; // false by default
 
@@ -27,6 +28,7 @@ namespace IO
             mBufferOffset = 0;
             mInputStream = input;
             mBufferLength = bufferLength;
+            mMaxBufferLength = bufferLength;
             mBuffer = new long[(mBufferLength - 1) / 8 + 1];
             ReadBackup();
             GetNextBuffer().Wait();
@@ -69,20 +71,36 @@ namespace IO
                 int fits = bufferWordLength - mBitOffset;
                 int notFits = length - fits;
                 long bitMask = fits == 64 ? -1L : ((1L << fits) - 1);
+
                 mBitOffset = 0;
-                var firstPart = (mBuffer[mBufferOffset++] & bitMask) << notFits;
+
+                var firstPart = ((mBuffer[mBufferOffset++] >> (64 - bufferWordLength)) & bitMask) << notFits;
                 var secondPart = await ReadCustomLength(notFits);
                 if (secondPart == null)
+                {
+                    mBuffer = new[] { firstPart >> notFits };
+                    mBufferOffset = 0;
+                    mBitOffset = 64 - fits;
+                    mBufferLength = 8;
                     return null;
+                }
+
+
                 return firstPart | secondPart;
             }
+        }
+
+        public async Task<long> GetFileSizeAsync()
+        {
+            return this.mInputStream.Length;
         }
 
         public async Task ResetBufferedReader()
         {
             this.mInputStream.Seek(0, SeekOrigin.Begin);
             mBuffer = new long[(mBufferLength - 1) / 8 + 1];
-            mBufferOffset = 0;
+            mBitOffset = 0;
+            mBufferLength = mMaxBufferLength;
             ReadBackup();
             await GetNextBuffer();
         }
@@ -107,6 +125,7 @@ namespace IO
             mBufferLength = mBackupBufferLength;
             mBackupBuffer = null;
             mBufferOffset = 0;
+            mBitOffset = 0;
             mReadSemaphore.Release();
             
             if(!mStreamEmpty)
