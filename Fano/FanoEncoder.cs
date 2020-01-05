@@ -9,6 +9,11 @@ using System.Threading.Tasks;
 
 namespace FanoCompression
 {
+    public static class County
+    {
+        public static int countForBits = 0;
+    }
+
     class FanoEncoder
     {
         private readonly BufferedReader reader;
@@ -27,13 +32,13 @@ namespace FanoCompression
             this.wordLength = wordLength;
             //Calculate word frequencies
             //-------------------------------------------------------------------------
-            Dictionary<long?, int> frequencies = await CalculateFrequencyAsync();
+            Dictionary<long?, long> frequencies = await CalculateFrequencyAsync();
 
             //Create encoding tree
             //-------------------------------------------------------------------------
 
             //Create sorted list
-            List<KeyValuePair<long?, int>> frequencyList = frequencies.ToList();
+            List<KeyValuePair<long?, long>> frequencyList = frequencies.ToList();
             frequencyList.Sort((val1, val2) => (val1.Value.CompareTo(val2.Value)));
 
             //Creating tree
@@ -48,7 +53,7 @@ namespace FanoCompression
             //-------------------------------------------------------------------------
             /* --Structure--
              * word length : byte
-             * code length in bytes : long
+             * original file length in bytes : long
              * tree : Bit...
              * code : Bit...
              */
@@ -57,6 +62,8 @@ namespace FanoCompression
             //long codeLength = 0;
             //codeLength = frequencyList.Select(x => encodingTable[x.Key].codeLength * x.Value).Sum();
 
+            
+            //Possible misscount?
             long originalFileLength = frequencyList.Select(x => x.Value).Sum() * this.wordLength / 8;
 
             //Writing
@@ -68,10 +75,16 @@ namespace FanoCompression
             await WriteEncodingTreeAsync(root);
 
             long? currentWord;
+            long bitsWritten = 0;
             while ((currentWord = await this.reader.ReadCustomLength(this.wordLength)) != null)
             {
+                bitsWritten += encodingTable[currentWord].codeLength;
                 await this.writer.WriteCustomLength((long)encodingTable[currentWord].code, encodingTable[currentWord].codeLength);
             }
+            Console.WriteLine($"\nFano tree bits written: {County.countForBits}");
+            Console.WriteLine($"Encode bits written: {bitsWritten}");
+            Console.WriteLine($"TOTAL bits: {bitsWritten + County.countForBits + sizeof(byte) * 8 + sizeof(long) * 8} ({(bitsWritten + (float) County.countForBits + sizeof(byte) * 8 + sizeof(long) * 8) / 8} bytes)");
+            
             await this.writer.FlushBuffer();
         }
 
@@ -79,7 +92,7 @@ namespace FanoCompression
         {
             /* --Structure--
              * word length : byte
-             * code length in bytes : long
+             * original file length in bytes : long
              * tree : Bit...
              * code : Bit...
              */
@@ -97,27 +110,53 @@ namespace FanoCompression
             //Creating decode table
             Dictionary<long?, (long? code, int codeLength)> encodingTable = await CreateEncodingsAsync(root);
 
-            Console.WriteLine("Hello!");
-            long bitsWritten = 0;
-            while(bitsWritten / 8 < originalFileLength)
+            decimal bytesWritten = 0;
+            decimal wordToBytes = ((decimal)this.wordLength) / 8;
+
+            DateTime start = DateTime.Now;
+            while(bytesWritten + wordToBytes <= originalFileLength)
             {
-                long currentCode = 0;
-                int currentCodeLength = 0;
+               
+                TreeNode branch = root;
                 while(true)
                 {
                     long? currentBit = await reader.ReadCustomLength(1);
-                    currentCodeLength++;
-                    currentCode = (currentCode << 1) + (long) currentBit;
-                    long? word = encodingTable.Where(x => x.Value.codeLength == currentCodeLength && x.Value.code == currentCode).FirstOrDefault().Key;
-                    if(word != null)
+
+                    branch = currentBit == 1 ? branch.Right : branch.Left;
+                    if (branch.leaf != null)
                     {
-                        bitsWritten += this.wordLength;
-                        await this.writer.WriteCustomLength((long)word, this.wordLength);
+                        //bitsWritten += this.wordLength;
+                        bytesWritten += wordToBytes;
+                        await this.writer.WriteCustomLength((long)branch.leaf, this.wordLength);
+                        break;
+                    }
+                 
+                }
+                
+            }
+            TreeNode branch2 = root;
+            var da = (((decimal)originalFileLength) - bytesWritten);
+            var remainder = (8 * (((decimal)originalFileLength) - bytesWritten));
+            if (remainder > 0)
+            {
+                while (true)
+                {
+                    long? currentBit = await reader.ReadCustomLength(1);
+
+                    branch2 = currentBit == 1 ? branch2.Right : branch2.Left;
+                    if (branch2.leaf != null)
+                    {
+                        //bitsWritten += this.wordLength;
+                        bytesWritten += wordToBytes;
+                        var d = (int)(remainder * this.wordLength);
+                        await this.writer.WriteCustomLength((long)branch2.leaf, (int) (remainder));
                         break;
                     }
                 }
             }
 
+            TimeSpan timeSpent = DateTime.Now - start;
+            Console.WriteLine($"Decoding finished! It took {timeSpent.Minutes}:{timeSpent.Seconds}:{timeSpent.Milliseconds} to do so");
             await this.writer.FlushBuffer();
         }
 
@@ -135,7 +174,6 @@ namespace FanoCompression
             if (bit == 1)
             {
                 long? word = await this.reader.ReadCustomLength(this.wordLength);
-                Console.WriteLine($"Word is: {word}");
                 parent.leaf = word;
                 return parent;
             }
@@ -148,9 +186,9 @@ namespace FanoCompression
             }
         }
 
-        async Task<Dictionary<long?, int>> CalculateFrequencyAsync()
+        async Task<Dictionary<long?, long>> CalculateFrequencyAsync()
         {
-            var frequencies = new Dictionary<long?, int>();
+            var frequencies = new Dictionary<long?, long>();
 
             long? currentWord;
 
@@ -169,7 +207,7 @@ namespace FanoCompression
             await this.reader.ResetBufferedReader();
             return frequencies;
         }
-        private async Task<TreeNode> CreateEncodeTree(List<KeyValuePair<long?, int>> frequencies)
+        private async Task<TreeNode> CreateEncodeTree(List<KeyValuePair<long?, long>> frequencies)
         {
             if (frequencies.Count == 1)
             {
@@ -188,7 +226,7 @@ namespace FanoCompression
             }
 
         }
-        private int FindSplitIndex(List<KeyValuePair<long?, int>> frequencies)
+        private int FindSplitIndex(List<KeyValuePair<long?, long>> frequencies)
         {
             long rightSum = frequencies[^1].Value;
             long leftSum = 0;
@@ -206,7 +244,6 @@ namespace FanoCompression
                     rightSum += frequencies[^rightIndex++].Value;
                 }
             }
-            Console.WriteLine($"Left vs right: {leftSum} vs {rightSum}, split index is: {leftIndex} and rightindex{rightIndex}");
             return leftIndex;
         }
         private async Task<Dictionary<long?, (long? code, int codeLength)>> CreateEncodingsAsync(TreeNode node)
@@ -234,13 +271,13 @@ namespace FanoCompression
         {
             if (node.leaf != null)
             {
-                Console.Write($"1|{(long)node.leaf }|");
+                County.countForBits += this.wordLength + 1;
                 await this.writer.WriteCustomLength(1, 1);
                 await this.writer.WriteCustomLength((long)node.leaf, this.wordLength);
             }
             else
             {
-                Console.Write($"0");
+                County.countForBits += 1;
                 await writer.WriteCustomLength(0, 1);
                 await WriteEncodingTreeAsync(node.Left);
                 await WriteEncodingTreeAsync(node.Right);

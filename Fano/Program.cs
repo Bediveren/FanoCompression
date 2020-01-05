@@ -13,34 +13,41 @@ namespace FanoCompression
 
         static async Task Main(string[] args)
         {
-            /* --Encoding --
-            byte wordLength = 8;  
             
-            FileStream readFileStream = new FileStream("../../../sample.txt", FileMode.Open, FileAccess.Read);
-            BufferedReader reader = new BufferedReader(8000, readFileStream);
+            
+            // --Encoding --
+            byte wordLength = 63;  
+            
+            FileStream readFileStream = new FileStream("../../../sound.wav", FileMode.Open, FileAccess.Read);
+            BufferedReader reader = new BufferedReader(80000000, readFileStream);
 
-            FileStream writeFileStream = new FileStream("../../../sample2.fano", FileMode.Create, FileAccess.Write);
-            BufferedWriter writer = new BufferedWriter(8000, writeFileStream);
+            FileStream writeFileStream = new FileStream("../../../sound.fano", FileMode.Create, FileAccess.Write);
+            BufferedWriter writer = new BufferedWriter(80000000, writeFileStream);
 
-            var fano = new FanoEncoder(reader , writer, wordLength);
-            await fano.Encode();
+            var fano = new FanoEncoder(reader , writer);
+            await fano.Encode(wordLength);
 
-            readFileStream.Close();
+            readFileStream.Close(); 
             writeFileStream.Close();
-            */
-            FileStream readFileStream = new FileStream("../../../sample2.fano", FileMode.Open, FileAccess.Read);
-            BufferedReader reader = new BufferedReader(8000, readFileStream);
+            
+
+            
+            FileStream readFileStream2 = new FileStream("../../../sound.fano", FileMode.Open, FileAccess.Read);
+            BufferedReader reader2 = new BufferedReader(80000000, readFileStream2);
+
+            Console.WriteLine($"The decode file is {readFileStream2.Length} bytes length ({readFileStream2.Length *8} bits)");
+
+           
+            FileStream writeFileStream2 = new FileStream("../../../soundDecoded.wav", FileMode.Create, FileAccess.Write);
+            BufferedWriter writer2 = new BufferedWriter(80000000, writeFileStream2);
+
+            var fano2 = new FanoEncoder(reader2, writer2);
+            await fano2.Decode();
 
 
-            //TO-DO HAVE FILE EXTENTION/NAME also saved
-            FileStream writeFileStream = new FileStream("../../../sample3.txt", FileMode.Create, FileAccess.Write);
-            BufferedWriter writer = new BufferedWriter(8000, writeFileStream);
-
-            var fano = new FanoEncoder(reader, writer);
-            await fano.Decode();
-
-            readFileStream.Close();
-            writeFileStream.Close();
+            readFileStream2.Close();
+            writeFileStream2.Close();
+            
 
         }
     }
