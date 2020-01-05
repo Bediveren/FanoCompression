@@ -90,7 +90,7 @@ namespace IO
             }
         }
 
-        public async Task<long> GetFileSizeAsync()
+        public long GetFileSize()
         {
             return this.mInputStream.Length;
         }
@@ -101,13 +101,14 @@ namespace IO
             mBuffer = new long[(mBufferLength - 1) / 8 + 1];
             mBitOffset = 0;
             mBufferLength = mMaxBufferLength;
+            mStreamEmpty = false;
             ReadBackup();
             await GetNextBuffer();
         }
 
         private int GetBufferWordLength()
         {
-            var bufferWordLength = (mStreamEmpty && mBufferOffset == (mBufferLength - 1) / 8) ? (mBufferLength % 8) * 8 : 64;
+            var bufferWordLength = (mBufferOffset == (mBufferLength - 1) / 8) ? (mBufferLength % 8) * 8 : 64;
             if (bufferWordLength == 0)
                 bufferWordLength = 64;
             return bufferWordLength;

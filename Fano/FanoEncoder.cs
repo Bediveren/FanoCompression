@@ -20,7 +20,9 @@ namespace FanoCompression
         private readonly BufferedWriter writer;
         private byte wordLength;
 
+        public event Action<long> WordsWritten;
 
+        //Source: Shannon-Fano https://w.wiki/DZH
         public FanoEncoder(BufferedReader reader, BufferedWriter writer)
         {
             this.reader = reader;
@@ -30,6 +32,7 @@ namespace FanoCompression
         public async Task Encode(byte wordLength)
         {
             this.wordLength = wordLength;
+
             //Calculate word frequencies
             //-------------------------------------------------------------------------
             Dictionary<long?, long> frequencies = await CalculateFrequencyAsync();
@@ -54,24 +57,15 @@ namespace FanoCompression
             /* --Structure--
              * word length : byte
              * original file length in bytes : long
-             * tree : Bit...
-             * code : Bit...
+             * tree : Bits...
+             * code : Bits...
              */
 
-            //Compute code length
-            //long codeLength = 0;
-            //codeLength = frequencyList.Select(x => encodingTable[x.Key].codeLength * x.Value).Sum();
-
-
-            //Possible misscount?
-            // long originalFileLength = frequencyList.Select(x => x.Value).Sum() * this.wordLength / 8;
-            //Console.WriteLine($"Original file length: {originalFileLength}");
-            long originalFileLength = await reader.GetFileSizeAsync();
+            long originalFileLength = reader.GetFileSize();
 
             //Writing
             await this.writer.WriteCustomLength((long)this.wordLength, sizeof(byte) * 8);
             await this.writer.WriteCustomLength(originalFileLength, sizeof(long) * 8);
-            //await this.writer.WriteCustomLength(codeLength, sizeof(long) * 8);
             
             //Writing tree
             await WriteEncodingTreeAsync(root);
@@ -82,6 +76,7 @@ namespace FanoCompression
             {
                 bitsWritten += encodingTable[currentWord].codeLength;
                 await this.writer.WriteCustomLength((long)encodingTable[currentWord].code, encodingTable[currentWord].codeLength);
+                WordsWritten?.Invoke(1);
             }
             for (int i = this.wordLength - 1; i > 0; i--)
             {
@@ -93,12 +88,9 @@ namespace FanoCompression
 
                     bitsWritten += encodingTable[currentWord].codeLength;
                     await this.writer.WriteCustomLength((long)encodingTable[currentWord].code, encodingTable[currentWord].codeLength);
-
+                    WordsWritten?.Invoke(1);
                 }
             }
-            Console.WriteLine($"\nFano tree bits written: {County.countForBits}");
-            Console.WriteLine($"Encode bits written: {bitsWritten}");
-            Console.WriteLine($"TOTAL bits: {bitsWritten + County.countForBits + sizeof(byte) * 8 + sizeof(long) * 8} ({(bitsWritten + (float) County.countForBits + sizeof(byte) * 8 + sizeof(long) * 8) / 8} bytes)");
             
             await this.writer.FlushBuffer();
         }
@@ -114,9 +106,7 @@ namespace FanoCompression
 
             //Reading word length, original file length
             this.wordLength = (byte) await reader.ReadCustomLength(8);
-            Console.WriteLine($"Word length: {wordLength}");
             long originalFileLength = (long) await reader.ReadCustomLength(64);
-            Console.WriteLine($"Original file size in bytes: {originalFileLength}");
 
             //Parsing tree from bits
             TreeNode root = await ParseDecodeTreeAsync();
@@ -128,7 +118,6 @@ namespace FanoCompression
             decimal bytesWritten = 0;
             decimal wordToBytes = ((decimal)this.wordLength) / 8;
 
-            DateTime start = DateTime.Now;
             while(bytesWritten + wordToBytes <= originalFileLength)
             {
                
@@ -170,8 +159,6 @@ namespace FanoCompression
                 }
             }
 
-            TimeSpan timeSpent = DateTime.Now - start;
-            Console.WriteLine($"Decoding finished! It took {timeSpent.Minutes}:{timeSpent.Seconds}:{timeSpent.Milliseconds} to do so");
             await this.writer.FlushBuffer();
         }
 
