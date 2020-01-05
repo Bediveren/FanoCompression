@@ -9,14 +9,14 @@ using System.Threading.Tasks;
 
 namespace FanoCompression
 {
-    class FanoEncoder
+    public class FanoEncoder
     {
         private readonly BufferedReader reader;
         private readonly BufferedWriter writer;
         private byte wordLength;
 
         public event Action<long> WordsWritten;
-        public event Action<byte> WordLength;
+        public event Action<byte, long> WordLength;
 
         //Source: Shannon-Fano https://w.wiki/DZH
         public FanoEncoder(BufferedReader reader, BufferedWriter writer)
@@ -109,7 +109,7 @@ namespace FanoCompression
             }
 
             //Save
-            await this.writer.FlushBuffer();
+            //await this.writer.FlushBuffer();
         }
 
         public async Task Decode()
@@ -124,7 +124,7 @@ namespace FanoCompression
             //Reading word length, original file length
             this.wordLength = (byte) await reader.ReadCustomLength(8);
             long originalFileLength = (long) await reader.ReadCustomLength(64);
-            WordLength?.Invoke(this.wordLength);
+            WordLength?.Invoke(this.wordLength, originalFileLength);
 
             if (originalFileLength > 0)
             {
@@ -150,6 +150,7 @@ namespace FanoCompression
                     }
                     bytesWritten += wordToBytes;
                     await this.writer.WriteCustomLength((long)branch.leaf, this.wordLength);
+                    WordsWritten?.Invoke(1);
 
                 }
                 TreeNode branch2 = root;
@@ -167,6 +168,7 @@ namespace FanoCompression
                             bytesWritten += wordToBytes;
                             var d = (int)(remainder * this.wordLength);
                             await this.writer.WriteCustomLength((long)(branch2.leaf >> (this.wordLength - (int)remainder)), (int) remainder);
+                            WordsWritten?.Invoke(1);
                             break;
                         }
                     }
@@ -176,7 +178,7 @@ namespace FanoCompression
             }
 
             //Save
-            await this.writer.FlushBuffer();
+            //await this.writer.FlushBuffer();
         }
 
         private async Task<TreeNode> ParseDecodeTreeAsync()

@@ -2,7 +2,6 @@
 using System.Collections;
 using System.IO;
 using System.Linq;
-using System.Runtime.Intrinsics.X86;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -139,7 +138,7 @@ namespace IO
             try
             {
                 byte[] tempBuffer = new byte[mBufferLength + 8];
-                int bytesRead = await mInputStream.ReadAsync(tempBuffer, 0, mBufferLength);
+                int bytesRead = mInputStream.Read(tempBuffer, 0, mBufferLength);
                 mBackupBuffer = bytesRead == 0
                     ? null
                     : Enumerable.Range(0, (mBufferLength - 1) / 8 + 1).Select(x =>
