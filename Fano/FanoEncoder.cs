@@ -83,6 +83,19 @@ namespace FanoCompression
                 bitsWritten += encodingTable[currentWord].codeLength;
                 await this.writer.WriteCustomLength((long)encodingTable[currentWord].code, encodingTable[currentWord].codeLength);
             }
+            for (int i = this.wordLength - 1; i > 0; i--)
+            {
+                currentWord = await this.reader.ReadCustomLength(i);
+
+                if (currentWord != null)
+                {
+                    currentWord <<= this.wordLength - i;
+
+                    bitsWritten += encodingTable[currentWord].codeLength;
+                    await this.writer.WriteCustomLength((long)encodingTable[currentWord].code, encodingTable[currentWord].codeLength);
+
+                }
+            }
             Console.WriteLine($"\nFano tree bits written: {County.countForBits}");
             Console.WriteLine($"Encode bits written: {bitsWritten}");
             Console.WriteLine($"TOTAL bits: {bitsWritten + County.countForBits + sizeof(byte) * 8 + sizeof(long) * 8} ({(bitsWritten + (float) County.countForBits + sizeof(byte) * 8 + sizeof(long) * 8) / 8} bytes)");
@@ -151,7 +164,7 @@ namespace FanoCompression
                         //bitsWritten += this.wordLength;
                         bytesWritten += wordToBytes;
                         var d = (int)(remainder * this.wordLength);
-                        await this.writer.WriteCustomLength((long)branch2.leaf, (int) (remainder));
+                        await this.writer.WriteCustomLength((long)(branch2.leaf >> (this.wordLength - (int)remainder)), (int) remainder);
                         break;
                     }
                 }
@@ -203,6 +216,26 @@ namespace FanoCompression
                 else
                 {
                     frequencies.Add(currentWord, 1);
+                }
+            }
+            
+            //Check for remaining bits
+            for(int i = this.wordLength - 1; i > 0; i--)
+            {
+                currentWord = await this.reader.ReadCustomLength(i);
+                
+                if(currentWord != null)
+                {
+                    currentWord <<= this.wordLength - i;
+                    if (frequencies.ContainsKey(currentWord))
+                    {
+                        frequencies[currentWord] += 1;
+                    }
+                    else
+                    {
+                        frequencies.Add(currentWord, 1);
+                    }
+                    break;
                 }
             }
 

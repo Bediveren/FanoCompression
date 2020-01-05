@@ -16,12 +16,12 @@ namespace FanoCompression
             
             
             // --Encoding --
-            byte wordLength = 32;  
+            byte wordLength = 3;  
             
-            FileStream readFileStream = new FileStream("../../../sound.wav", FileMode.Open, FileAccess.Read);
-            BufferedReader reader = new BufferedReader(80000000, readFileStream);
+            FileStream readFileStream = new FileStream("../../../ex2.txt", FileMode.Open, FileAccess.Read);
+            BufferedReader reader = new BufferedReader(80_000_000, readFileStream);
 
-            FileStream writeFileStream = new FileStream("../../../sound.fano", FileMode.Create, FileAccess.Write);
+            FileStream writeFileStream = new FileStream("../../../ex2.fano", FileMode.Create, FileAccess.Write);
             BufferedWriter writer = new BufferedWriter(80000000, writeFileStream);
 
             var fano = new FanoEncoder(reader , writer);
@@ -32,13 +32,13 @@ namespace FanoCompression
             
 
             
-            FileStream readFileStream2 = new FileStream("../../../sound.fano", FileMode.Open, FileAccess.Read);
+            FileStream readFileStream2 = new FileStream("../../../ex2.fano", FileMode.Open, FileAccess.Read);
             BufferedReader reader2 = new BufferedReader(80000000, readFileStream2);
 
-            Console.WriteLine($"The decode file is {readFileStream2.Length} bytes length ({readFileStream2.Length *8} bits)");
+            Console.WriteLine($"The decoded file is {readFileStream2.Length} bytes long ({readFileStream2.Length *8} bits)");
 
            
-            FileStream writeFileStream2 = new FileStream("../../../soundDecoded.wav", FileMode.Create, FileAccess.Write);
+            FileStream writeFileStream2 = new FileStream("../../../ex2Decoded.txt", FileMode.Create, FileAccess.Write);
             BufferedWriter writer2 = new BufferedWriter(80000000, writeFileStream2);
 
             var fano2 = new FanoEncoder(reader2, writer2);
