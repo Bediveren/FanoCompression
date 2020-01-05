@@ -47,6 +47,7 @@ namespace LZ77
         }
 
         public event Action<long> WordsWritten;
+        public event Action<long> FileLength;
         public long TotalWords { get; private set; } = 1;
 
         private readonly ReadDelegate mRead;
@@ -66,6 +67,7 @@ namespace LZ77
         public async Task Extract()
         {
             TotalWords = (await mRead(64)).GetValueOrDefault();
+            FileLength?.Invoke(TotalWords);
             mMaxHistory = Convert.ToUInt32((await mRead(32)).GetValueOrDefault());
             mPresentLength = Convert.ToInt32((await mRead(8)).GetValueOrDefault());
             int historyLengthInBits = Log2_WiegleyJ(mMaxHistory - 1) + 1;

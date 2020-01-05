@@ -160,6 +160,8 @@ namespace WpfGUI
             var reader = new BufferedReader(2000000, mInputStreamLz77I);
             var writer = new BufferedWriter(2000000, mOutputStreamLz77I);
             var len = mInputStreamLz77I.Length;
+            if (len == 0)
+                len = 1;
 
             var compressor = await LZ77.Compressor.Create(reader.ReadByte, writer.WriteCustomLength, mHistory, mPresent);
             compressor.WordsWritten += x =>
@@ -272,10 +274,10 @@ namespace WpfGUI
             long progress = 0;
             var reader = new BufferedReader(2000000, mInputStreamLz77O);
             var writer = new BufferedWriter(2000000, mOutputStreamLz77O);
-            var len = mInputStreamLz77O.Length / mWordLength * 8;
+            var len = 1L;
 
             var extractor = new Extractor(reader.ReadCustomLength, writer.WriteCustomLength);
-
+            extractor.FileLength += x => len = x;
             extractor.WordsWritten += x =>
             {
                 progress += x;
@@ -420,6 +422,8 @@ namespace WpfGUI
             var reader = new BufferedReader(2000000, mInputStreamFanoI);
             var writer = new BufferedWriter(2000000, mOutputStreamFanoI);
             var len = mInputStreamFanoI.Length / mWordLength * 8;
+            if (len == 0)
+                len = 1;
 
             var compressor = new FanoEncoder(reader, writer);
 
@@ -532,10 +536,13 @@ namespace WpfGUI
             long progress = 0;
             var reader = new BufferedReader(2000000, mInputStreamFanoO);
             var writer = new BufferedWriter(2000000, mOutputStreamFanoO);
-            var len = mInputStreamFanoO.Length / mWordLength * 8;
+            var len = mInputStreamFanoO.Length;
+            if (len == 0)
+                len = 1;
 
             var extractor = new FanoEncoder(reader, writer);
 
+            extractor.WordLength += (x, y) => len = y / x * 8;
             extractor.WordsWritten += x =>
             {
                 progress += x;

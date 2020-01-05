@@ -21,7 +21,7 @@ namespace FanoCompression
         private byte wordLength;
 
         public event Action<long> WordsWritten;
-        public event Action<byte> WordLength;
+        public event Action<byte, long> WordLength;
 
         //Source: Shannon-Fano https://w.wiki/DZH
         public FanoEncoder(BufferedReader reader, BufferedWriter writer)
@@ -129,7 +129,7 @@ namespace FanoCompression
             //Reading word length, original file length
             this.wordLength = (byte) await reader.ReadCustomLength(8);
             long originalFileLength = (long) await reader.ReadCustomLength(64);
-            WordLength?.Invoke(this.wordLength);
+            WordLength?.Invoke(this.wordLength, originalFileLength);
 
             if (originalFileLength > 0)
             {
