@@ -27,8 +27,6 @@ namespace WpfGUI
     /// </summary>
     public partial class MainWindow : Window
     {
-        private long mLz77CompressProgress;
-
         private readonly Brush mErrorBrush = new SolidColorBrush(Colors.Red);
         private Brush mNormalBrush;
         private Brush mButtonBrush;
@@ -282,8 +280,7 @@ namespace WpfGUI
             {
                 progress += x;
             };
-            Timer t = new Timer(o => mLz77OWorker.ReportProgress(Convert.ToInt32(progress * 100 / len)), null, 0,
-                25);
+            Timer t = new Timer(o => mLz77OWorker.ReportProgress(Convert.ToInt32(progress * 100 / len)), null, 0, 25);
 
             await extractor.Extract();
             t.Dispose();
