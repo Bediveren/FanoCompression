@@ -9,11 +9,6 @@ using System.Threading.Tasks;
 
 namespace FanoCompression
 {
-    public static class County
-    {
-        public static int countForBits = 0;
-    }
-
     class FanoEncoder
     {
         private readonly BufferedReader reader;
@@ -315,13 +310,11 @@ namespace FanoCompression
         {
             if (node.leaf != null)
             {
-                County.countForBits += this.wordLength + 1;
                 await this.writer.WriteCustomLength(1, 1);
                 await this.writer.WriteCustomLength((long)node.leaf, this.wordLength);
             }
             else
             {
-                County.countForBits += 1;
                 await writer.WriteCustomLength(0, 1);
                 await WriteEncodingTreeAsync(node.Left);
                 await WriteEncodingTreeAsync(node.Right);
